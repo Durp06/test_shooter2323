@@ -27,11 +27,13 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
  */
 public class Robot extends TimedRobot {
 
+  public int canIDs[] = new int[] {8, 9, 10, 11};
+  public TalonFX motors[] = new TalonFX[canIDs.length];
+
   public TalonFX motor = new TalonFX(10);
-  //public TalonFX motor2 = new TalonFX(11);
 
 
-  private void configureDriveMotor() {
+  private void configureDriveMotor(TalonFX y) {
     var driveConfig = new TalonFXConfiguration();
     driveConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
@@ -39,7 +41,8 @@ public class Robot extends TimedRobot {
     driveConfig.Slot0.kI = 0;
     driveConfig.Slot0.kD = 0;
 
-    motor.getConfigurator().apply(driveConfig);
+    
+    y.getConfigurator().apply(driveConfig);
     //motor2.getConfigurator().apply(driveConfig);
 }
   /**
@@ -48,27 +51,22 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    SmartDashboard.putNumber("PercentOut1", 0);
-    SmartDashboard.putNumber("PercentOut2", 0);
-
-    configureDriveMotor();
+    for (int i = 0; i<canIDs.length; i++){
+      motors[i] = new TalonFX(canIDs[i]);
+       SmartDashboard.putNumber("PercentOut" + i, 0);
+       configureDriveMotor(motors[i]);
+    }
   }
 
-  public double getPercentOut1() {
+  /*public double getPercentOut() {
     return NetworkTableInstance
       .getDefault()
       .getTable("/SmartDashboard")
-      .getEntry("PercentOut1")
+      .getEntry("PercentOut")
       .getDouble(0.0);
-  }
+  }*/
 
-    public double getPercentOut2() {
-    return NetworkTableInstance
-      .getDefault()
-      .getTable("/SmartDashboard")
-      .getEntry("PercentOut2")
-      .getDouble(0.0);
-  }
+ 
 
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
@@ -79,69 +77,26 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //SmartDashboard.putNumber("Speed", (motor.getRotorVelocity().getValue() / 2.0 ) * (2*Math.PI*2));
-    //SmartDashboard.putNumber("RPS", motor.getRotorVelocity().getValue());
-    SmartDashboard.putNumber("RPM 1", motor.getRotorVelocity().getValue() * 60);
-    //SmartDashboard.putNumber("RPM 2", motor2.getRotorVelocity().getValue() * 60);
+    for (int x = 0; x < motors.length; x++){
+      var request = new DutyCycleOut(
+      NetworkTableInstance
+        .getDefault()
+        .getTable("/SmartDashboard")
+        .getEntry("PercentOut" + x)
+        .getDouble(0.0)
+        );
+      motors[x].setControl(request);
 
+      SmartDashboard.putNumber("RPM " + x, motors[x].getRotorVelocity().getValue() * 60);
+      SmartDashboard.putNumber("Voltage", motors[x].getTorqueCurrent().getValue());
+    }
 
-    var request1 = new DutyCycleOut(getPercentOut1());
-    var request2 = new DutyCycleOut(getPercentOut2());
+    // var request1 = new DutyCycleOut(getPercentOut());
+    // motor.setControl(request1);
 
-    motor.setControl(request1);
-    //motor2.setControl(request2);
+    // SmartDashboard.putNumber("RPS", motor.getRotorVelocity().getValue());
+    // SmartDashboard.putNumber("RPM 1", motor.getRotorVelocity().getValue() * 60);
   }
+ 
 
-  /**
-   * This autonomous (along with the chooser code above) shows how to select between different
-   * autonomous modes using the dashboard. The sendable chooser code works with the Java
-   * SmartDashboard. If you prefer the LabVIEW Dashboard, remove all of the chooser code and
-   * uncomment the getString line to get the auto name from the text box below the Gyro
-   *
-   * <p>You can add additional auto modes by adding additional comparisons to the switch structure
-   * below with additional strings. If using the SendableChooser make sure to add them to the
-   * chooser code above as well.
-   */
-  @Override
-  public void autonomousInit() {
-
-  }
-
-  /** This function is called periodically during autonomous. */
-  @Override
-  public void autonomousPeriodic() {
-    
-  }
-
-  /** This function is called once when teleop is enabled. */
-  @Override
-  public void teleopInit() {}
-
-  /** This function is called periodically during operator control. */
-  @Override
-  public void teleopPeriodic() {}
-
-  /** This function is called once when the robot is disabled. */
-  @Override
-  public void disabledInit() {}
-
-  /** This function is called periodically when disabled. */
-  @Override
-  public void disabledPeriodic() {}
-
-  /** This function is called once when test mode is enabled. */
-  @Override
-  public void testInit() {}
-
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {}
-
-  /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {}
-
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {}
 }
