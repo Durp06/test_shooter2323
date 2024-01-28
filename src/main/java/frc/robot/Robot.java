@@ -30,7 +30,7 @@ public class Robot extends TimedRobot {
   public int canIDs[] = new int[] {8, 9, 10, 11};
   public TalonFX motors[] = new TalonFX[canIDs.length];
 
-  public TalonFX motor = new TalonFX(10);
+  //public TalonFX motor = new TalonFX(10);
 
 
   private void configureDriveMotor(TalonFX y) {
