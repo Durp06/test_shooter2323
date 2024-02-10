@@ -47,7 +47,8 @@ public class Robot extends TimedRobot {
    * initialization code.
    */
   @Override
-  public void robotInit() {
+  public void
+   robotInit() {
     for (int i = 0; i<canIDs.length; i++){
       motors[i] = new TalonFX(canIDs[i]);
        SmartDashboard.putNumber("PercentOut" + i, 0);
