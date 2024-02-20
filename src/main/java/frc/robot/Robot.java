@@ -4,17 +4,27 @@
 
 package frc.robot;
 
+import edu.wpi.first.networktables.DoubleEntry;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.util.datalog.DataLog;
+import edu.wpi.first.util.datalog.DataLogEntry;
+import edu.wpi.first.util.datalog.DoubleArrayLogEntry;
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DutyCycle;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+import javax.xml.crypto.Data;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -25,15 +35,17 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
  * the package after creating this project, you must also update the build.gradle file in the
  * project.
  */
+
+ //talon.setrotpos = 0 on a
+
 public class Robot extends TimedRobot {
 
-  public int canIDs[] = new int[] {8, 9, 10, 11};
-  public TalonFX motors[] = new TalonFX[canIDs.length];
+  public TalonFX wrist_motor = new TalonFX(10);
+  public CANcoder wrist_encoder = new CANcoder(1);
+  public DoubleArrayLogEntry doubleEntryz;
+  public XboxController controller = new XboxController(0);
 
-  //public TalonFX motor = new TalonFX(10);
-
-
-  private void configureDriveMotor(TalonFX y) {
+  private void configureDriveMotor() {
     var driveConfig = new TalonFXConfiguration();
     driveConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
@@ -41,9 +53,7 @@ public class Robot extends TimedRobot {
     driveConfig.Slot0.kI = 0;
     driveConfig.Slot0.kD = 0;
 
-    
-    y.getConfigurator().apply(driveConfig);
-    //motor2.getConfigurator().apply(driveConfig);
+    wrist_motor.getConfigurator().apply(driveConfig);
 }
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -51,22 +61,23 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    for (int i = 0; i<canIDs.length; i++){
-      motors[i] = new TalonFX(canIDs[i]);
-       SmartDashboard.putNumber("PercentOut" + i, 0);
-       configureDriveMotor(motors[i]);
-    }
+    SmartDashboard.putNumber("PercentOut1", 0);
+    DataLogManager.start();
+
+    DataLog log = DataLogManager.getLog();
+
+    doubleEntryz = new DoubleArrayLogEntry(log, "/my/doubleArray");
+    configureDriveMotor();
   }
 
-  /*public double getPercentOut() {
+  public double getPercentOut1() {
     return NetworkTableInstance
       .getDefault()
       .getTable("/SmartDashboard")
-      .getEntry("PercentOut")
+      .getEntry("PercentOut1")
       .getDouble(0.0);
-  }*/
+  }
 
- 
 
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
@@ -77,26 +88,17 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    for (int x = 0; x < motors.length; x++){
-      var request = new DutyCycleOut(
-      NetworkTableInstance
-        .getDefault()
-        .getTable("/SmartDashboard")
-        .getEntry("PercentOut" + x)
-        .getDouble(0.0)
-        );
-      motors[x].setControl(request);
+    SmartDashboard.putNumber("RPM 1", wrist_motor.getRotorVelocity().getValue() * 60);
 
-      SmartDashboard.putNumber("RPM " + x, motors[x].getRotorVelocity().getValue() * 60);
-      SmartDashboard.putNumber("Voltage", motors[x].getTorqueCurrent().getValue());
-    }
+    var request1 = new DutyCycleOut(controller.getLeftY());
+    wrist_motor.setControl(request1);
 
-    // var request1 = new DutyCycleOut(getPercentOut());
-    // motor.setControl(request1);
+    if (controller.getAButtonPressed())
+      wrist_motor.setPosition(0);
 
-    // SmartDashboard.putNumber("RPS", motor.getRotorVelocity().getValue());
-    // SmartDashboard.putNumber("RPM 1", motor.getRotorVelocity().getValue() * 60);
+    double[] vals = {wrist_motor.getPosition().getValue(), wrist_encoder.getPosition().getValue()};
+    doubleEntryz.append(vals);
   }
- 
 
+  
 }
