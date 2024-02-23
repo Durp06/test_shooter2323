@@ -4,30 +4,15 @@
 
 package frc.robot;
 
-import edu.wpi.first.networktables.DoubleEntry;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.util.datalog.DataLog;
-import edu.wpi.first.util.datalog.DataLogEntry;
 import edu.wpi.first.util.datalog.DoubleArrayLogEntry;
 import edu.wpi.first.wpilibj.DataLogManager;
-import edu.wpi.first.wpilibj.DutyCycle;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import javax.xml.crypto.Data;
-
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
-import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
-import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -40,44 +25,23 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class Robot extends TimedRobot {
 
-  public TalonFX wrist_motor = new TalonFX(10);
-  public CANcoder wrist_encoder = new CANcoder(1);
+  public TalonFX wrist_motor = new TalonFX(16, "SuperStructureBus");
+  public CANcoder wrist_encoder = new CANcoder(26, "SuperStructureBus");
   public DoubleArrayLogEntry doubleEntryz;
   public XboxController controller = new XboxController(0);
-
-  private void configureDriveMotor() {
-    var driveConfig = new TalonFXConfiguration();
-    driveConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-    driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-    driveConfig.Slot0.kP = 20.0;
-    driveConfig.Slot0.kI = 0;
-    driveConfig.Slot0.kD = 0;
-
-    wrist_motor.getConfigurator().apply(driveConfig);
-}
+  public boolean logStarted = false;
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
    */
   @Override
   public void robotInit() {
-    SmartDashboard.putNumber("PercentOut1", 0);
     DataLogManager.start();
-
-    DataLog log = DataLogManager.getLog();
-
-    doubleEntryz = new DoubleArrayLogEntry(log, "/my/doubleArray");
-    configureDriveMotor();
   }
 
-  public double getPercentOut1() {
-    return NetworkTableInstance
-      .getDefault()
-      .getTable("/SmartDashboard")
-      .getEntry("PercentOut1")
-      .getDouble(0.0);
+  private double encToMotor(double motor) {
+    return 0.00717*motor+0.328;
   }
-
 
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
@@ -88,15 +52,30 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    SmartDashboard.putNumber("RPM 1", wrist_motor.getRotorVelocity().getValue() * 60);
-
-    var request1 = new DutyCycleOut(controller.getLeftY());
+    var request1 = new DutyCycleOut(controller.getLeftY() * 0.4);
     wrist_motor.setControl(request1);
 
     if (controller.getAButtonPressed())
       wrist_motor.setPosition(0);
 
+    if (controller.getBButtonPressed() && !logStarted) {
+      doubleEntryz = new DoubleArrayLogEntry(
+        DataLogManager.getLog(),
+        "/my/doubleArray"
+      );
+      logStarted = true;
+    }
+
     double[] vals = {wrist_motor.getPosition().getValue(), wrist_encoder.getPosition().getValue()};
+
+    SmartDashboard.putNumber("motorRots", vals[0]);
+    SmartDashboard.putNumber("encoderDeg", vals[1]);
+    SmartDashboard.putNumber("estEncoder", encToMotor(vals[0]));
+
+    if (!logStarted) {
+      return;
+    }
+
     doubleEntryz.append(vals);
   }
 
